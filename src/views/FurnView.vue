@@ -18,12 +18,13 @@
       >
     </div>
     <el-table :data="tableData" stripe style="width: 90%">
-      <el-table-column prop="id" label="ID" sortable> </el-table-column>
-      <el-table-column prop="name" label="家居名"> </el-table-column>
-      <el-table-column prop="maker" label="厂家"> </el-table-column>
-      <el-table-column prop="price" label="价格"> </el-table-column>
-      <el-table-column prop="sales" label="销量"> </el-table-column>
-      <el-table-column prop="stock" label="库存"> </el-table-column>
+      <el-table-column prop="id" label="ID" sortable />
+      <el-table-column prop="name" label="家居名" />
+      <el-table-column prop="maker" label="厂家" />
+      <el-table-column prop="price" label="价格" />
+      <el-table-column prop="sales" label="销量" />
+      <el-table-column prop="stock" label="库存" />
+      <el-table-column prop="createTime" label="日期" />
       <el-table-column fixed="right" label="操作" width="170px">
         <template #default="scope">
           <el-button @click="doEdit(scope.row)" type="primary">编辑</el-button>
@@ -49,7 +50,7 @@
       >
       </el-pagination>
     </div>
-    <el-dialog title="提示" v-model="dialogVisible" width="30%">
+    <el-dialog title="表单信息" v-model="dialogVisible" width="30%">
       <el-form
         v-model="form"
         :rules="rules"
@@ -166,16 +167,10 @@ export default {
     async doDelete(id) {
       const res = await myAxios.delete(`/furn/delete/${id}`);
       if (res) {
-        this.$message({
-          type: "success",
-          message: "删除成功",
-        });
+        this.doAlert("success", "删除成功");
         this.listPage();
       } else {
-        this.$message({
-          type: "error",
-          message: "删除失败",
-        });
+        this.doAlert("error", "删除失败");
       }
     },
     /**
@@ -188,56 +183,59 @@ export default {
         searchText: this.searchText,
       };
       myAxios.post("/furn/list/query", queryParams).then((res) => {
-        console.log("res=", res);
+        // 修改日期格式
+        res.records.forEach((element) => {
+          element.createTime = parseDate(element.createTime);
+        });
         this.tableData = res.records;
         this.total = res.total;
       });
+      /**
+       * 转换日期格式
+       * @param {Date} createTime 创建日期
+       */
+      const parseDate = (createTime) => {
+        const date = new Date(createTime);
+        const year = date.getFullYear();
+        const month = (date.getMonth() + 1).toString().padStart(2, "0");
+        const day = date.getDate().toString().padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      };
     },
     async doDataChange() {
       // 修改
       if (this.form.id) {
         const res = await myAxios.put("/furn/update", this.form);
         if (res) {
-          this.$message({
-            type: "success",
-            message: "更新成功",
-          });
+          this.doAlert("success", "更新成功");
         } else {
-          this.$message({
-            type: "error",
-            message: "更新失败",
-          });
+          this.doAlert("error", "更新失败");
         }
         this.listPage();
         this.dialogVisible = false;
       }
       // 添加
       else {
-        this.$refs.form.validate((valid) => {
-          if (valid) {
-            myAxios.post("/furn/save", this.form).then((res) => {
-              if (res > 0) {
-                this.dialogVisible = false;
-                this.listPage();
-                this.$message({
-                  type: "success",
-                  message: "新增成功",
-                });
-              } else if (res === -1) {
-                this.validMsg.name = res.data.name;
-                this.validMsg.maker = res.data.maker;
-                this.validMsg.price = res.data.price;
-                this.validMsg.sales = res.data.sales;
-                this.validMsg.stock = res.data.stock;
-              }
-            });
-          } else {
-            this.$message({
-              type: "error",
-              message: "验证没有通过, 不提交",
-            });
-            return false;
+        // this.$refs.form.validate((valid) => {
+        //   if (valid) {
+        myAxios.post("/furn/save", this.form).then((res) => {
+          if (res > 0) {
+            this.dialogVisible = false;
+            this.listPage();
+            this.doAlert("success", "新增成功");
           }
+          //     else if (res === -1) {
+          //       this.validMsg.name = res.data.name;
+          //       this.validMsg.maker = res.data.maker;
+          //       this.validMsg.price = res.data.price;
+          //       this.validMsg.sales = res.data.sales;
+          //       this.validMsg.stock = res.data.stock;
+          //     }
+          //   });
+          // } else {
+          //   this.doAlert("error", "验证未通过");
+          //   return false;
+          // }
         });
       }
     },
@@ -267,6 +265,15 @@ export default {
       this.$refs.form.resetFields();
       //将上次后端返回的校验信息清空
       this.validMsg = {};
+    },
+    /**
+     * 执行弹窗提示
+     */
+    doAlert(type, message) {
+      this.$message({
+        type,
+        message,
+      });
     },
   },
 };
